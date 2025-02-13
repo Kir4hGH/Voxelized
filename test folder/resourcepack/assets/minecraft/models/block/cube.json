@@ -1,16 +1,27 @@
 {
-    "parent": "block/block",
-    "elements": [
-        {   "from": [ 0, 0, 0 ],
-            "to": [ 16, 16, 16 ],
-            "faces": {
-                "down":  { "texture": "#down", "cullface": "down" },
-                "up":    { "texture": "#up", "cullface": "up" },
-                "north": { "texture": "#north", "cullface": "north" },
-                "south": { "texture": "#south", "cullface": "south" },
-                "west":  { "texture": "#west", "cullface": "west" },
-                "east":  { "texture": "#east", "cullface": "east" }
-            }
-        }
-    ]
+	"credit": "Made with Blockbench",
+	"parent": "block/block",
+	"textures": {
+		"0": "block/crafting_table_down",
+		"1": "block/crafting_table_east",
+		"2": "block/crafting_table_north",
+		"3": "block/crafting_table_south",
+		"4": "block/crafting_table_up",
+		"5": "block/crafting_table_west",
+		"particle": "block/crafting_table_down"
+	},
+	"elements": [
+		{
+			"from": [0, 0, 0],
+			"to": [16, 16, 16],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#2", "cullface": "north"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#1", "cullface": "east"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#3", "cullface": "south"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#5", "cullface": "west"},
+				"up": {"uv": [0, 0, 16, 16], "texture": "#4", "cullface": "up"},
+				"down": {"uv": [0, 0, 16, 16], "texture": "#0", "cullface": "down"}
+			}
+		}
+	]
 }

@@ -49,14 +49,14 @@ class Voxelizer:
                         exist_ok=True)  # Only if it requires to change one texture more than once
 
     @staticmethod
-    def _merge(img_modified, img_main, modified_side, main_side) -> ImageFile:
+    def _merge(img_modified, img_main, modified_side, main_side, scale=1) -> ImageFile:
         """
         Merging two block sides' images
         :param img_modified:
         :param img_main:
         :param modified_side:
         :param main_side:
-        :return: Pillow's ImageFile. Hope this doesn't break anything
+        :return: PIL.ImageFile
         """
         # Ensure both images are in 'P' mode (palettized)
         _chg = img_modified.convert('P')
@@ -79,9 +79,9 @@ class Voxelizer:
         if main_side == 'up':
             main_line_indices = main_array[0, :]
         elif main_side == 'down':
-            main_line_indices = main_array[-1, :]
+            main_line_indices = main_array[-1, ::-1]
         elif main_side == 'left':
-            main_line_indices = main_array[:, 0]
+            main_line_indices = main_array[::-1, 0]
         elif main_side == 'right':
             main_line_indices = main_array[:, -1]
         else:
@@ -90,13 +90,13 @@ class Voxelizer:
         # Checking the merging side of modified texture
         # Get the color indices of the needed line
         if modified_side == 'up':
-            modified_line_indices = chg_array[0, :]
+            modified_line_indices = chg_array[0, ::-1]
         elif modified_side == 'down':
             modified_line_indices = chg_array[-1, :]
         elif modified_side == 'left':
             modified_line_indices = chg_array[:, 0]
         elif modified_side == 'right':
-            modified_line_indices = chg_array[:, -1]
+            modified_line_indices = chg_array[::-1, -1]
         else:
             raise ValueError("Modified side: Not an actual side")
 
@@ -157,12 +157,12 @@ class Voxelizer:
         block_textures_img = {side: Image.open(os.path.join(self.input_folder_textures, path))
                               for side, path in block_textures.items()}
 
-        # Define merge operations as (target_side, source_side, modified_side, main_side)
+        # Define merge operations as (target_face, source_face, target_face_side, source_face_side)
         merge_operations = [
             # Top to sides
-            ('north', 'up', 'up', 'up'),  # broken
+            ('north', 'up', 'up', 'up'),
             ('west', 'up', 'up', 'left'),
-            ('east', 'up', 'up', 'right'),  # broken
+            ('east', 'up', 'up', 'right'),
             ('south', 'up', 'up', 'down'),
 
             # Sides between each other
@@ -172,19 +172,19 @@ class Voxelizer:
             ('south', 'east', 'right', 'left'),
 
             # Sides to bottom
-            ('down', 'north', 'down', 'down'),  # broken
-            ('down', 'west', 'right', 'down'),  # broken
-            ('down', 'east', 'left', 'down'),
+            ('down', 'north', 'down', 'down'),
+            ('down', 'west', 'left', 'down'),
+            ('down', 'east', 'right', 'down'),
             ('down', 'south', 'up', 'down')
         ]
 
         # Apply merge operations
-        for target_side, source_side, modified_side, main_side in merge_operations:
-            block_textures_img[target_side] = Voxelizer._merge(
-                block_textures_img[target_side],
-                block_textures_img[source_side],
-                modified_side,
-                main_side
+        for target_face, source_face, target_face_side, source_face_side in merge_operations:
+            block_textures_img[target_face] = Voxelizer._merge(
+                block_textures_img[target_face],
+                block_textures_img[source_face],
+                target_face_side,
+                source_face_side
             )
 
         # Saving modified images

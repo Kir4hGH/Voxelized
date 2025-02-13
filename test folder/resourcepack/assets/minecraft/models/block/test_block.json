@@ -1,0 +1,11 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "down": "minecraft:block/test_1",
+    "east": "minecraft:block/test_2",
+    "north": "minecraft:block/test_3",
+    "south": "minecraft:block/test_4",
+    "up": "minecraft:block/test_5",
+    "west": "minecraft:block/test_6"
+  }
+}
