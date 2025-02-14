@@ -42,13 +42,13 @@ class Block:
         print(self.block_data)
 
 
-class BlockProcessor:
+class BlockFactory:
     """Factory class to create the appropriate block type."""
     @staticmethod
-    def to_block(block_model_path):
+    def new_block(block_model_path):
         """Create a new block object based on the model."""
 
-        if BlockProcessor.is_model_supported(block_model_path):
+        if BlockFactory.is_model_supported(block_model_path):
             return Block(block_model_path)
         return NotImplementedError
 
@@ -67,10 +67,7 @@ if __name__ == '__main__':
     # Paths to block JSON files
     cube_block_path = ('K:/Kir4h/Programming/Voxelized/test folder/'
                        "resourcepack/assets/minecraft/models/block/crafting_table.json")
-    cube_all_block_path = 'path_to_cube_all_block.json'
-    cube_column_block_path = 'path_to_cube_column_block.json'
-    stairs_block_path = 'path_to_stairs_block.json'
 
     # Create and process blocks
-    cube_block = BlockProcessor.to_block(cube_block_path)
+    cube_block = BlockFactory.new_block(cube_block_path)
     cube_block.print_sides()

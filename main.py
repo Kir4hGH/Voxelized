@@ -1,66 +1,90 @@
 import os
 import glob
-
 import numpy as np
 from PIL import Image, ImageFile
-from tkinter.filedialog import askdirectory
+from enum import Enum
 
-from blocks import BlockProcessor
+from tkinter.filedialog import askdirectory
+from blocks import BlockFactory
+
+
+class ExportType(Enum):
+    """
+    Enum of export type
+
+    values:
+    DEPENDENT = writes only the textures which is needed to voxelize. Fully dependent from an old pack
+
+    SEMI_DEPENDENT = writes all the textures of every voxelized element. Still dependent from an old pack
+
+    INDEPENDENT = Default option. Writes a new pack with voxelized old pack's elements and rest of its content
+
+    FULL = Writes every single minecraft element into new pack
+    """
+    DEPENDENT = "dependent"
+    SEMI_DEPENDENT = "semi-dependent"
+    INDEPENDENT = "independent"  # default
+    FULL = "full"
 
 
 class Voxelizer:
     """
-    Class which makes block voxelized
+    Class which makes resource pack voxelized.
     """
-    def __init__(self, directory, full_export='full'):
-        self.input_folder = directory
+    def __init__(self, directory, export_type=ExportType.INDEPENDENT, voxel_size=1):
+        """
+        :param directory: path to resource pack
+        :param export_type: how much the new pack will contain in itself
+        :param voxel_size: determines scaling [not implemented]
+        """
+        # Validate the resource pack structure
+        if not self.is_resourcepack_structure_valid(directory):
+            self._is_process_allowed = self._ask_user_to_continue()
+            if not self._is_process_allowed:
+                return
 
-        # Paths for block models and textures
-        self.input_folder_textures = os.path.join(self.input_folder, 'assets/minecraft/textures/block')
-        self.input_folder_models = os.path.join(self.input_folder, 'assets/minecraft/models/block')
-
-        # Prepare path to save the modified resource pack
-        self.parent_directory = os.path.dirname(self.input_folder)
-        self.output_folder = os.path.join(self.parent_directory,
-                                          os.path.basename(self.input_folder) + '_voxelized')
-
-        self.output_folder_textures = os.path.join(self.output_folder, 'assets/minecraft/textures/block')
-
-        # Variables
-
-        # Figure out when needed
-        self.is_models_folder_created = True
-        if self.is_models_folder_created:
-            self.output_folder_models = os.path.join(self.output_folder, 'assets/minecraft/models')
+        self._input_folder = directory
 
         # Determine whether to do a new resource pack with old pack as dependency or do a full texture export
-        self.full_export = full_export
+        self.export_type = export_type
 
-        self.make_output_folders()
+        # Paths for block models and textures
+        self._input_folder_textures = os.path.join(self._input_folder, 'assets/minecraft/textures/block')
+        self._input_folder_models = os.path.join(self._input_folder, 'assets/minecraft/models/block')
 
-    def make_output_folders(self):
+        # Prepare path to save the modified resource pack
+        self._parent_directory = os.path.dirname(self._input_folder)
+        self.output_folder = os.path.join(self._parent_directory,
+                                          os.path.basename(self._input_folder) + '_voxelized')
+
+        self._output_folder_textures = os.path.join(self.output_folder, 'assets/minecraft/textures/block')
+
+        self._output_folder_models = os.path.join(self.output_folder, 'assets/minecraft/models')
+
+        self._make_output_folders()
+
+    def _make_output_folders(self):
         os.makedirs(self.output_folder, exist_ok=True)
         os.makedirs(os.path.join(self.output_folder, 'assets'), exist_ok=True)
         os.makedirs(os.path.join(self.output_folder, 'assets/minecraft'), exist_ok=True)
         os.makedirs(os.path.join(self.output_folder, 'assets/minecraft/textures'), exist_ok=True)
-        os.makedirs(self.output_folder_textures, exist_ok=True)
-        if self.is_models_folder_created:
-            os.makedirs(self.output_folder_models,
-                        exist_ok=True)  # Only if it requires to change one texture more than once
+        os.makedirs(self._output_folder_textures, exist_ok=True)
+        os.makedirs(self._output_folder_models,
+                    exist_ok=True)  # Only if it requires to change one texture more than once
 
     @staticmethod
-    def _merge(img_modified, img_main, modified_side, main_side, scale=1) -> ImageFile:
+    def _merge(modified_img, main_img, modified_side, main_side, scale=1) -> ImageFile:
         """
         Merging two block sides' images
-        :param img_modified:
-        :param img_main:
-        :param modified_side:
-        :param main_side:
+        :param modified_img: img which will be changed
+        :param main_img: img from where colors will be taken
+        :param modified_side: side of modified_img
+        :param main_side: side of main_img
         :return: PIL.ImageFile
         """
         # Ensure both images are in 'P' mode (palettized)
-        _chg = img_modified.convert('P')
-        _main = img_main.convert('P')
+        _chg = modified_img.convert('P')
+        _main = main_img.convert('P')
 
         # Get the color palettes
         chg_palette = _chg.getpalette()
@@ -124,26 +148,27 @@ class Voxelizer:
         modified_line_indices[:] = new_indices
 
         # Create a new image with the modified pixel values
-        img_modified = Image.fromarray(chg_array.astype(np.uint8), mode='P')
-        img_modified.putpalette(new_palette_flat)
+        modified_img = Image.fromarray(chg_array.astype(np.uint8), mode='P')
+        modified_img.putpalette(new_palette_flat)
 
-        return img_modified
+        return modified_img
 
     def voxelize_all(self):
         # Get a list of block models
-        block_models_path_mask = os.path.join(self.input_folder_models, "*.json")
+        block_models_path_mask = os.path.join(self._input_folder_models, "*.json")
         block_model_files = glob.glob(block_models_path_mask)
 
-        block_count = 0
+        blocks_processed = 0
+        blocks_found = 0
         for block_model_json in block_model_files:
-
-            if BlockProcessor.is_model_supported(block_model_json):
-                block_count += 1  # Only if the block will be voxelized
+            blocks_found += 1
+            if BlockFactory.is_model_supported(block_model_json):
+                blocks_processed += 1
                 self.voxelize_block(block_model_json)
-        print("Blocks found: " + str(block_count))
+        print(f'Blocks processed: {blocks_processed}/{blocks_found}')
 
     def voxelize_block(self, block_model_json):
-        block = BlockProcessor.to_block(block_model_json)
+        block = BlockFactory.new_block(block_model_json)
         self._voxelize(block)
 
     def _voxelize(self, block):
@@ -154,7 +179,7 @@ class Voxelizer:
         block_textures = {side: Voxelizer.block_to_texture_path(path)
                           for side, path in block.textures.items() if side not in ['particle']}
 
-        block_textures_img = {side: Image.open(os.path.join(self.input_folder_textures, path))
+        block_textures_img = {side: Image.open(os.path.join(self._input_folder_textures, path))
                               for side, path in block_textures.items()}
 
         # Define merge operations as (target_face, source_face, target_face_side, source_face_side)
@@ -189,8 +214,8 @@ class Voxelizer:
 
         # Saving modified images
         for face, img in block_textures_img.items():
-            if face not in ['north'] or self.full_export == 'full':
-                img.save(os.path.join(self.output_folder_textures, str(block.name + f'_{face}.png')))
+            if face not in ['north'] or self.export_type == 'full':
+                img.save(os.path.join(self._output_folder_textures, str(block.name + f'_{face}.png')))
 
     @staticmethod
     def block_to_texture_path(path) -> str:
@@ -201,6 +226,47 @@ class Voxelizer:
         :return: actual texture.png path
         """
         return str(path).replace('minecraft:block/', '') + '.png'
+
+    @staticmethod
+    def is_resourcepack_structure_valid(resource_pack_path):
+        """
+        Validate the structure of the resource pack.
+        :param resource_pack_path: Path to the resource pack folder.
+        :return: True if the structure is valid, False otherwise.
+        """
+        required_structure = [
+            'assets/minecraft/models/block',
+            'assets/minecraft/textures/block',
+            'pack.mcmeta'
+        ]
+
+        missing_items = []
+        for item in required_structure:
+            item_path = os.path.join(resource_pack_path, item)
+            if not os.path.exists(item_path):
+                missing_items.append(item)
+
+        if missing_items:
+            print("Warning: The resource pack is missing the following required items:")
+            for item in missing_items:
+                print(f"  - {item}")
+            return False
+        return True
+
+    @staticmethod
+    def _ask_user_to_continue() -> bool:
+        """
+        Ask the user if they want to continue despite the missing items.
+        :return: True if the user chooses to continue, False otherwise.
+        """
+        while True:
+            user_input = input("Do you want to continue? (yes/no): ").strip().lower()
+            if user_input in ['yes', 'y']:
+                return True
+            elif user_input in ['no', 'n']:
+                return False
+            else:
+                print("Invalid input. Please enter 'yes' or 'no'.")
 
 
 def main():
