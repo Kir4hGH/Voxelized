@@ -1,11 +1,14 @@
 import os
+import shutil
 import glob
+import json
 import numpy as np
 from PIL import Image, ImageFile
 from enum import Enum
 
 from tkinter.filedialog import askdirectory
-from blocks import BlockFactory
+
+from blocks import BlockFactory, Block
 
 
 class ExportType(Enum):
@@ -47,8 +50,9 @@ class Voxelizer:
 
         # Determine whether to do a new resource pack with old pack as dependency or do a full texture export
         self.export_type = export_type
+        self.voxel_size = voxel_size
 
-        # Paths for block models and textures
+        # Paths for block models and textures' source
         self._input_folder_textures = os.path.join(self._input_folder, 'assets/minecraft/textures/block')
         self._input_folder_models = os.path.join(self._input_folder, 'assets/minecraft/models/block')
 
@@ -59,11 +63,11 @@ class Voxelizer:
 
         self._output_folder_textures = os.path.join(self.output_folder, 'assets/minecraft/textures/block')
 
-        self._output_folder_models = os.path.join(self.output_folder, 'assets/minecraft/models')
+        self._output_folder_models = os.path.join(self.output_folder, 'assets/minecraft/models/block')
 
-        self._make_output_folders()
+        self._make_voxelized_resource_pack_contents()
 
-    def _make_output_folders(self):
+    def _make_voxelized_resource_pack_contents(self):
         os.makedirs(self.output_folder, exist_ok=True)
         os.makedirs(os.path.join(self.output_folder, 'assets'), exist_ok=True)
         os.makedirs(os.path.join(self.output_folder, 'assets/minecraft'), exist_ok=True)
@@ -71,6 +75,17 @@ class Voxelizer:
         os.makedirs(self._output_folder_textures, exist_ok=True)
         os.makedirs(self._output_folder_models,
                     exist_ok=True)  # Only if it requires to change one texture more than once
+
+        # Copying pack.mcmeta file to a new pack
+        mcmeta_source_path = os.path.join(self._input_folder, 'pack.mcmeta')
+        # Check if the source file exists
+        if os.path.exists(mcmeta_source_path):
+
+            # Construct the full destination path
+            mcmeta_copy_path = os.path.join(self.output_folder, 'pack.mcmeta')
+
+            # Copy the file
+            shutil.copy(mcmeta_source_path, mcmeta_copy_path)
 
     @staticmethod
     def _merge(modified_img, main_img, modified_side, main_side, scale=1) -> ImageFile:
@@ -156,32 +171,44 @@ class Voxelizer:
     def voxelize_all(self):
         # Get a list of block models
         block_models_path_mask = os.path.join(self._input_folder_models, "*.json")
-        block_model_files = glob.glob(block_models_path_mask)
+        block_models_paths = glob.glob(block_models_path_mask)
 
         blocks_processed = 0
         blocks_found = 0
-        for block_model_json in block_model_files:
+        for block_models_path in block_models_paths:
             blocks_found += 1
-            if BlockFactory.is_model_supported(block_model_json):
+            if BlockFactory.is_model_supported(block_models_path):
                 blocks_processed += 1
-                self.voxelize_block(block_model_json)
+                self.voxelize_block(block_models_path)
         print(f'Blocks processed: {blocks_processed}/{blocks_found}')
 
-    def voxelize_block(self, block_model_json):
-        block = BlockFactory.new_block(block_model_json)
+    def voxelize_block(self, block_model_path: str):
+        block = BlockFactory.new_block(block_model_path)
         self._voxelize(block)
 
-    def _voxelize(self, block):
-        # Check texture for repeating (parent) [NOT YET IMPLEMENTED]
-        # Process a block
+    def _voxelize(self, block: Block):
+        """
+        Four stages:
+        identify,
+        open,
+        process,
+        save
+        """
         print("Voxelizing", block.name)
 
-        block_textures = {side: Voxelizer.block_to_texture_path(path)
-                          for side, path in block.textures.items() if side not in ['particle']}
+        # Identify
+        pass
 
-        block_textures_img = {side: Image.open(os.path.join(self._input_folder_textures, path))
-                              for side, path in block_textures.items()}
+        # Open
+        # Get texture paths, excluding 'particle'
+        block_texture_paths = {side: Voxelizer.block_to_texture_path(path)
+                               for side, path in block.textures.items() if side not in ['particle']}
 
+        # Load images for each texture
+        block_texture_images = {side: Image.open(os.path.join(self._input_folder_textures, path))
+                                for side, path in block_texture_paths.items()}
+
+        # Process
         # Define merge operations as (target_face, source_face, target_face_side, source_face_side)
         merge_operations = [
             # Top to sides
@@ -205,17 +232,46 @@ class Voxelizer:
 
         # Apply merge operations
         for target_face, source_face, target_face_side, source_face_side in merge_operations:
-            block_textures_img[target_face] = Voxelizer._merge(
-                block_textures_img[target_face],
-                block_textures_img[source_face],
+            block_texture_images[target_face] = Voxelizer._merge(
+                block_texture_images[target_face],
+                block_texture_images[source_face],
                 target_face_side,
                 source_face_side
             )
 
-        # Saving modified images
-        for face, img in block_textures_img.items():
-            if face not in ['north'] or self.export_type == 'full':
-                img.save(os.path.join(self._output_folder_textures, str(block.name + f'_{face}.png')))
+        # Save modified images and update texture paths
+        updated_textures_paths = {}
+        for face, img in block_texture_images.items():
+            # Save the modified texture
+            texture_filename = f"{block.name}_{face}.png"
+            texture_path = os.path.join(self._output_folder_textures, texture_filename)
+            img.save(texture_path)
+            # Store the updated texture path
+            updated_textures_paths[face] = texture_filename
+
+        # Update the JSON model with the new texture paths
+        self._update_json_model(block, updated_textures_paths)
+
+    def _update_json_model(self, block: Block, block_textures_paths: dict):
+        """
+        Update the JSON model with new texture paths.
+        :param block: The block object being processed.
+        :param block_textures_paths: Dictionary of texture paths for each side.
+        """
+        # Load the original JSON model
+        with open(block.block_model_path, 'r') as file:
+            block_data = json.load(file)
+
+        # Update texture paths in the JSON model
+        for face, path in block_textures_paths.items():
+            if face in block_data['textures']:
+                # Convert the texture file path to JSON format
+                block_data['textures'][face] = self.texture_to_block_path(path)
+
+        # Save the updated JSON model to the output folder
+        output_json_path = os.path.join(self._output_folder_models, os.path.basename(block.block_model_path))
+        with open(output_json_path, 'w') as file:
+            json.dump(block_data, file, indent=4)
 
     @staticmethod
     def block_to_texture_path(path) -> str:
@@ -226,6 +282,16 @@ class Voxelizer:
         :return: actual texture.png path
         """
         return str(path).replace('minecraft:block/', '') + '.png'
+
+    @staticmethod
+    def texture_to_block_path(path) -> str:
+        """
+        Converts a texture file path to the format used in JSON models.
+        :param path: Path to the texture file (e.g., 'stone_top.png').
+        :return: JSON-compatible path (e.g., 'minecraft:block/stone_top').
+        """
+        # Remove the file extension and prepend 'minecraft:block/'
+        return f"minecraft:block/{os.path.splitext(path)[0]}"
 
     @staticmethod
     def is_resourcepack_structure_valid(resource_pack_path):
