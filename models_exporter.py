@@ -2,6 +2,10 @@ import os
 import json
 import pandas as pd
 
+"""
+Exports resource pack's models of blocks into .xlsx file for easier investigation
+"""
+
 
 def extract_block_data(json_file_path):
     """
@@ -70,7 +74,7 @@ def create_excel_from_jsons(json_directory, output_excel_path):
     # Ensure all texture columns are present in the DataFrame
     for column in all_texture_columns:
         if column not in df.columns:
-            df[column] = 'N/A'  # Fill missing texture columns with 'N/A'
+            df[column] = 'N/A'  # Fill missing texture columns with N/A
 
     # Reorder columns: Block Name, Parent, then Texture 1, Texture 2, etc.
     columns_order = ['Block Name', 'Parent'] + all_texture_columns
@@ -81,7 +85,7 @@ def create_excel_from_jsons(json_directory, output_excel_path):
     print(f"Excel file created successfully at {output_excel_path}")
 
 
-# Example usage
-json_directory = 'K:/Kir4h/Programming/Voxelized/minecraft/models/block'
-output_excel_path = 'minecraft_textures.xlsx'
-create_excel_from_jsons(json_directory, output_excel_path)
+if __name__ == '__main__':
+    _json_directory = 'K:/Kir4h/Programming/Voxelized/minecraft/models/block'
+    _output_excel_path = 'minecraft_textures.xlsx'
+    create_excel_from_jsons(_json_directory, _output_excel_path)

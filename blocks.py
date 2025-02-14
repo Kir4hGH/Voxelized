@@ -1,5 +1,6 @@
 import json
 import os
+
 # from abc import ABC, abstractmethod
 
 
@@ -29,23 +30,11 @@ class Block:
         self.textures = self.block_data.get('textures', {})
         self.block_type = self.block_data.get('parent')
 
-    def print_sides(self):
-        sides = ['up', 'down', 'north', 'south', 'east', 'west']
-        for side in sides:
-            texture_path = self.textures.get(side)
-            if texture_path:
-                print(f"  - Side '{side}': {texture_path}")
-            else:
-                print(f"  - Side '{side}': No texture found.")
-        print(self.textures)
-        print(self.block_type)
-        print(self.block_data)
-
 
 class BlockFactory:
     """Factory class to create the appropriate block type."""
     @staticmethod
-    def new_block(block_model_path):
+    def new_block(block_model_path: str) -> Block:
         """Create a new block object based on the model."""
 
         if BlockFactory.is_model_supported(block_model_path):
@@ -53,16 +42,79 @@ class BlockFactory:
         return NotImplementedError
 
     @staticmethod
-    def is_model_supported(block_model_path):
+    def is_model_supported(block_model_path) -> bool:
         with open(block_model_path) as file:
             block_data = json.load(file)
 
         parent = block_data.get('parent')
 
-        return parent in ['minecraft:block/cube', 'minecraft:block/cube_all', 'minecraft:block/cube_column']
+        supported_block_types = BlockFactory.supported_block_types().keys()
+
+        return parent in supported_block_types
+
+    @staticmethod
+    def supported_block_types() -> dict:
+        return {
+            'minecraft:block/cube': [
+                    # Top to sides
+                    ('north', 'up', 'up', 'up'),
+                    ('west', 'up', 'up', 'left'),
+                    ('east', 'up', 'up', 'right'),
+                    ('south', 'up', 'up', 'down'),
+
+                    # Sides between each other
+                    ('west', 'north', 'left', 'right'),
+                    ('east', 'north', 'right', 'left'),
+                    ('south', 'west', 'left', 'right'),
+                    ('south', 'east', 'right', 'left'),
+
+                    # Sides to bottom
+                    ('down', 'north', 'down', 'down'),
+                    ('down', 'west', 'left', 'down'),
+                    ('down', 'east', 'right', 'down'),
+                    ('down', 'south', 'up', 'down')
+                ],
+            'minecraft:block/cube_all': [
+                    # Top to sides
+                    ('north', 'up', 'up', 'up'),
+                    ('west', 'up', 'up', 'left'),
+                    ('east', 'up', 'up', 'right'),
+                    ('south', 'up', 'up', 'down'),
+
+                    # Sides between each other
+                    ('west', 'north', 'left', 'right'),
+                    ('east', 'north', 'right', 'left'),
+                    ('south', 'west', 'left', 'right'),
+                    ('south', 'east', 'right', 'left'),
+
+                    # Sides to bottom
+                    ('down', 'north', 'down', 'down'),
+                    ('down', 'west', 'left', 'down'),
+                    ('down', 'east', 'right', 'down'),
+                    ('down', 'south', 'up', 'down')
+                ],
+            'minecraft:block/cube_column': [
+                    # Top to sides
+                    ('north', 'up', 'up', 'up'),
+                    ('west', 'up', 'up', 'left'),
+                    ('east', 'up', 'up', 'right'),
+                    ('south', 'up', 'up', 'down'),
+
+                    # Sides between each other
+                    ('west', 'north', 'left', 'right'),
+                    ('east', 'north', 'right', 'left'),
+                    ('south', 'west', 'left', 'right'),
+                    ('south', 'east', 'right', 'left'),
+
+                    # Sides to bottom
+                    ('down', 'north', 'down', 'down'),
+                    ('down', 'west', 'left', 'down'),
+                    ('down', 'east', 'right', 'down'),
+                    ('down', 'south', 'up', 'down')
+                ],
+        }
 
 
-# Example usage
 if __name__ == '__main__':
     # Paths to block JSON files
     cube_block_path = ('K:/Kir4h/Programming/Voxelized/test folder/'
@@ -70,4 +122,4 @@ if __name__ == '__main__':
 
     # Create and process blocks
     cube_block = BlockFactory.new_block(cube_block_path)
-    cube_block.print_sides()
+    print(cube_block.textures)
