@@ -55,63 +55,44 @@ class BlockFactory:
     @staticmethod
     def supported_block_types() -> dict:
         return {
-            'minecraft:block/cube': [
-                    # Top to sides
-                    ('north', 'up', 'up', 'up'),
-                    ('west', 'up', 'up', 'left'),
-                    ('east', 'up', 'up', 'right'),
-                    ('south', 'up', 'up', 'down'),
+            # Waiting for test
 
-                    # Sides between each other
-                    ('west', 'north', 'left', 'right'),
-                    ('east', 'north', 'right', 'left'),
-                    ('south', 'west', 'left', 'right'),
-                    ('south', 'east', 'right', 'left'),
-
-                    # Sides to bottom
-                    ('down', 'north', 'down', 'down'),
-                    ('down', 'west', 'left', 'down'),
-                    ('down', 'east', 'right', 'down'),
-                    ('down', 'south', 'up', 'down')
-                ],
+            # Needs fix
             'minecraft:block/cube_all': [
-                    # Top to sides
-                    ('north', 'up', 'up', 'up'),
-                    ('west', 'up', 'up', 'left'),
-                    ('east', 'up', 'up', 'right'),
-                    ('south', 'up', 'up', 'down'),
-
-                    # Sides between each other
-                    ('west', 'north', 'left', 'right'),
-                    ('east', 'north', 'right', 'left'),
-                    ('south', 'west', 'left', 'right'),
-                    ('south', 'east', 'right', 'left'),
-
-                    # Sides to bottom
-                    ('down', 'north', 'down', 'down'),
-                    ('down', 'west', 'left', 'down'),
-                    ('down', 'east', 'right', 'down'),
-                    ('down', 'south', 'up', 'down')
+                    ('all', 'all', 'down', 'up'),
+                    ('all', 'all', 'right', 'left')
                 ],
             'minecraft:block/cube_column': [
-                    # Top to sides
-                    ('north', 'up', 'up', 'up'),
-                    ('west', 'up', 'up', 'left'),
-                    ('east', 'up', 'up', 'right'),
-                    ('south', 'up', 'up', 'down'),
-
                     # Sides between each other
-                    ('west', 'north', 'left', 'right'),
-                    ('east', 'north', 'right', 'left'),
-                    ('south', 'west', 'left', 'right'),
-                    ('south', 'east', 'right', 'left'),
+                    ('side', 'side', 'right', 'left'),
 
                     # Sides to bottom
-                    ('down', 'north', 'down', 'down'),
-                    ('down', 'west', 'left', 'down'),
-                    ('down', 'east', 'right', 'down'),
-                    ('down', 'south', 'up', 'down')
+                    ('end', 'side', 'up', 'up'),
+                    ('end', 'side', 'left', 'up'),
+                    ('end', 'side', 'down', 'down'),
+                    ('end', 'side', 'right', 'down')
                 ],
+
+            # Seems working
+            'minecraft:block/cube': [
+                # Top to sides
+                ('north', 'up', 'up', 'up'),
+                ('west', 'up', 'up', 'left'),
+                ('east', 'up', 'up', 'right'),
+                ('south', 'up', 'up', 'down'),
+
+                # Sides between each other
+                ('west', 'north', 'left', 'right'),
+                ('east', 'north', 'right', 'left'),
+                ('south', 'west', 'left', 'right'),
+                ('south', 'east', 'right', 'left'),
+
+                # Sides to bottom
+                ('down', 'north', 'down', 'down'),
+                ('down', 'west', 'left', 'down'),
+                ('down', 'east', 'right', 'down'),
+                ('down', 'south', 'up', 'down')
+            ]
         }
 
 
